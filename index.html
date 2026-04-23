@@ -842,52 +842,31 @@ function saveData(silent){
   });
 }
 
-/* Load from Firebase — auto-migrate from localStorage if Firebase is empty */
+/* Load from Firebase — ALWAYS Firebase first, no default data */
 function loadData(cb){
   setSyncStatus('saving');
   document.getElementById('sync-txt')&&(document.getElementById('sync-txt').textContent='Loading...');
   fetch(FB_URL+'?t='+Date.now(),{cache:'no-store'})
   .then(function(r){if(!r.ok) throw new Error('HTTP '+r.status);return r.json();})
   .then(function(rec){
-    if(rec&&rec.processes&&Object.keys(rec.processes).some(function(k){return rec.processes[k].length>0;})){
-      /* Firebase has data — use it */
+    if(rec&&rec.processes){
+      /* Firebase has data — always use it, no matter what */
       if(rec.processes) D=rec.processes;
       if(rec.videos) VIDEOS=rec.videos;
       if(rec.notifications) NOTIFS=rec.notifications;
       if(rec.header) HEADER=rec.header;
       if(rec.photos) PHOTOS=rec.photos;
       if(rec.passwords) PASSWORDS=rec.passwords;
-      setSyncStatus(true);
-      if(cb) cb();
-    } else {
-      /* Firebase empty — try migrate from localStorage */
-      var migrated=false;
-      try{
-        var bk=localStorage.getItem(LS_KEY);
-        if(bk){
-          var b=JSON.parse(bk);
-          var hasData=b.processes&&Object.keys(b.processes).some(function(k){return b.processes[k].length>0;});
-          if(hasData){
-            if(b.processes)D=b.processes;
-            if(b.videos)VIDEOS=b.videos;
-            if(b.notifications)NOTIFS=b.notifications;
-            if(b.header)HEADER=b.header;
-            if(b.photos)PHOTOS=b.photos;
-            if(b.passwords)PASSWORDS=b.passwords;
-            migrated=true;
-            /* Push localStorage data to Firebase */
-            saveData(true);
-            showToast('✅ Data Firebase pe migrate ho gaya!');
-          }
-        }
-      }catch(e){}
-      setSyncStatus(true);
-      if(cb) cb();
+      /* Also update localStorage with latest Firebase data */
+      try{localStorage.setItem(LS_KEY,JSON.stringify({processes:D,videos:VIDEOS,notifications:NOTIFS,header:HEADER,photos:PHOTOS,passwords:PASSWORDS}));}catch(e){}
     }
+    setSyncStatus(true);
+    if(cb) cb();
   })
   .catch(function(err){
     setSyncStatus(false,'Load failed: '+err.message);
-    showToast('⚠️ Cloud load fail! ('+err.message+')');
+    showToast('⚠️ Cloud load fail! Local backup se load ho raha hai...');
+    /* Only use localStorage as fallback when Firebase is completely unreachable */
     try{var bk=localStorage.getItem(LS_KEY);if(bk){var b=JSON.parse(bk);if(b.processes)D=b.processes;if(b.videos)VIDEOS=b.videos;if(b.notifications)NOTIFS=b.notifications;if(b.header)HEADER=b.header;if(b.photos)PHOTOS=b.photos;if(b.passwords)PASSWORDS=b.passwords;}}catch(e){}
     if(cb) cb();
   });
@@ -908,45 +887,7 @@ function resetToDefault(){
 }
 function exportData(){var blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='finveszpro-data.json';a.click();showToast('Data exported!');}
 
-var D={
-  office:[
-    {id:uid(),n:'Client Database',pc:'—',ps:'—',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'GSTR-1',pc:'Vani',ps:'Yash Dani · Chandan',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'GST-3B',pc:'Vani',ps:'Yash Dani · Chandan',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'GSTR-9',pc:'Vani',ps:'Yash Dani · Chandan',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'TDS Return',pc:'Vani',ps:'Yash Dani · Snigdha',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'ITR Filing',pc:'Vani',ps:'Yash Dani · Snigdha',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Order to Billing',pc:'Vani',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Accounting Tracker',pc:'—',ps:'—',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-  ],
-  admin:[
-    {id:uid(),n:'Fixed Asset Purchase',pc:'Vani',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Checklist',pc:'Vani',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Checklist (PC Sheet)',pc:'Vani',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Staff Recruitment',pc:'Vani',ps:'Yash Dani · Vani',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Staff Onboarding / KYC',pc:'Vani',ps:'Staff Onboarding',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Delegation Sheet',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Full Kitting Sheet',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Final CRM FMS',pc:'Vani',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Utility Bills (Elec.)',pc:'—',ps:'—',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Rental Invoice Mgmt',pc:'—',ps:'—',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Budget & Cost Control',pc:'—',ps:'—',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-  ],
-  wealth:[
-    {id:uid(),n:'Client Registrations',pc:'Vani',ps:'Yash Dani · Vani',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Client Investments',pc:'—',ps:'—',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Tele-Calling',pc:'Priya',ps:'Yash Dani · Priya',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Risk Profiling Sheet',pc:'Vani',ps:'Yash Dani · Vani',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Incentive Calculator',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Client Onboarding MGMT',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-  ],
-  trials:[
-    {id:uid(),n:'Executive MIS Summary',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Client Onboarding Mgmt System',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',othl:''},
-    {id:uid(),n:'Training Videos',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-    {id:uid(),n:'Office Reports',pc:'Divanshu',ps:'Yash Dani · Vinita',fms:'',chk:'',form:'',dash:'',vid:'',oth:'',othl:''},
-  ],
-};
+var D={office:[],admin:[],wealth:[],trials:[]};
 
 var VIDEOS=[
   {id:uid(),title:'GST - Complete Training Module',url:'https://sites.google.com/finveszprosolutionz.com/finvez-training-system-portal/gst-complete-training-module',cat:'GST',desc:'GSTR-1, GST-3B, GSTR-9 complete process'},
